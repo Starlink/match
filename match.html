@@ -17,6 +17,7 @@ updated Dec 14, 2001 <br>
 updated Dec 31, 2001 (ver 0.5) <br>
 updated Jun 19, 2002 (ver 0.6) <br>
 updated Oct 25, 2003 (ver 0.8) <br>
+updated Feb 17, 2007 (ver 0.9) <br>
 </h4>
 
 <P>
@@ -110,6 +111,20 @@ leftmost column in a file is "number 0", the next column is
               column 3      has "magnitude" value
               column 4      has "magnitude error" value
 </pre>
+
+<P>
+The matching routines make a weak assumption that the
+units of the input coordinates are very roughly the same
+size as the uncertainty in position of each item.
+That is, the uncertainty in the position of an item
+at (200, 250) might be around +/- 1 unit in each coordinate.
+It is okay if the uncertainties are smaller than 1 unit,
+but if the uncertainties are much, much larger --
+say, 50 or 100 units -- then the routines may fail.
+<b>If your original coordinate values have absolute 
+values larger than 5000, it might help to scale them all
+down by a factor of 10 or 100</b>.
+
 
 <P>
 <hr>
@@ -382,7 +397,7 @@ The "max_iter" and "halt_sigma" arguments can be used
 to control the number of times the code enters this
 loop and discards possible matches.
 Note that, if one uses the 
-<a name="project_coords"> project_coords </a>
+<a href="project_coords"> project_coords </a>
 routine to turn (RA, Dec) positions from a catalog
 into an input list, 
 the units will of this list will be radians;
@@ -681,6 +696,12 @@ HELPFUL HINTS
 If you know the relative scale of the two sets of objects, 
 you should use the <i>scale</i>, or <i>min_scale</i> and <i>max_scale</i>,
 options to narrow down the possible matches.
+
+<P>
+As mentioned above, if the uncertainty in positions
+is larger than a few units of the input coordinates,
+divide all the input coordinates by some constant factor.
+
 
 <P>
 In the very common case that the two sets of objects have

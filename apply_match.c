@@ -90,6 +90,9 @@
  * fixed equations in proc_star_file() so that they handle properly
  *   the coordinate transformations near the celestial poles.
  *   MWR 5/19/2003
+ *
+ * added 10 more %s in the "sscanf" statement in proc_star_file()
+ *   MWR 6/11/2008
  */
 
 
@@ -350,7 +353,7 @@ proc_star_file
       }
 
       shAssert(MAX_DATA_COL >= 20);
-      ncol = sscanf(line, "%s %s %s %s %s %s %s %s %s %s", 
+      ncol = sscanf(line, "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s", 
               &(col[0][0]), &(col[1][0]), &(col[2][0]), &(col[3][0]), 
               &(col[4][0]), &(col[5][0]), &(col[6][0]), &(col[7][0]), 
               &(col[8][0]), &(col[9][0]), 

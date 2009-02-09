@@ -1,0 +1,13 @@
+.deps
+Makefile
+apply_match
+apply_match.o
+atpmatch.o
+autom4te.cache
+config.log
+config.status
+match
+match.o
+misc.o
+project_coords
+project_coords.o

@@ -1,3 +1,4 @@
+*.dSYM
 .deps
 Makefile
 apply_match

@@ -1,3 +1,7 @@
+version 0.11  6/26/2010
+    Changed output TRANS elements format from %15.9f to %15.9e; should
+    increase accuracy of subsequent calculations when values are small.
+
 version 0.10  6/11/2008
     Small bug fix in "apply_match.c"
 

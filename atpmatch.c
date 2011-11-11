@@ -129,6 +129,11 @@
   *                atFindMedtf
   *             Nov 22, 2002
   *           Michael Richmond
+  *
+  *           Added the ratio of triangle sizes to a debugging printf
+  *             statement in make_vote_matrix.
+  *             June 26, 2010
+  *           Michael Richmond
   */
 
 
@@ -2702,8 +2707,9 @@ make_vote_matrix
 
 	    /* we have a (possible) match! */
 #ifdef DEBUG2
-	    printf("   match!  A: (%6.3f, %6.3f)   B: (%6.3f, %6.3f) \n",
-		  ba_A, ca_A, ba_B, ca_B);
+       ratio = t_array_A[i].a_length/t_array_B[j].a_length;
+	    printf("   match!  A: (%6.3f, %6.3f)   B: (%6.3f, %6.3f)  ratio %9.4e\n",
+		  ba_A, ca_A, ba_B, ca_B, ratio);
 #endif
 	    /* 
 	     * increment the vote_matrix cell for each matching pair 

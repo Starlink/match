@@ -25,6 +25,14 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  *
+ *
+ *  Changed the format of the "print_trans()" output so that TRANS elements
+ *    are now printed as %15.9e instead of %15.9f.  This will make a big
+ *    difference in accuracy when the elements have small values -- as they
+ *    will when one of the coordinate systems is in radians and the field
+ *    size is that of a typical CCD (10 arminutes).
+ *    June 26, 2010
+ *  Michael Richmond
  */
 
    /*
@@ -765,22 +773,22 @@ print_trans
    switch (trans->order) {
 
    case 1:  /* linear transformation */
-      printf("TRANS: a=%-15.9f b=%-15.9f c=%-15.9f d=%-15.9f e=%-15.9f f=%-15.9f",
+      printf("TRANS: a=%-15.9e b=%-15.9e c=%-15.9e d=%-15.9e e=%-15.9e f=%-15.9e",
             trans->a, trans->b, trans->c, trans->d, trans->e, trans->f);
       break;
 
    case 2:  /* quadratic terms */
-      printf("TRANS: a=%-15.9f b=%-15.9f c=%-15.9f d=%-15.9f e=%-15.9f f=%-15.9f ",
+      printf("TRANS: a=%-15.9e b=%-15.9e c=%-15.9e d=%-15.9e e=%-15.9e f=%-15.9e ",
           trans->a, trans->b, trans->c, trans->d, trans->e, trans->f);
-      printf("       g=%-15.9f h=%-15.9f i=%-15.9f j=%-15.9f k=%-15.9f l=%-15.9f",
+      printf("       g=%-15.9e h=%-15.9e i=%-15.9e j=%-15.9e k=%-15.9e l=%-15.9e",
           trans->g, trans->h, trans->i, trans->j, trans->k, trans->l);
       break;
    
    case 3:  /* cubic terms */
-      printf("TRANS: a=%-15.9f b=%-15.9f c=%-15.9f d=%-15.9f e=%-15.9f f=%-15.9f g=%-15.9f h=%-15.9f",
+      printf("TRANS: a=%-15.9e b=%-15.9e c=%-15.9e d=%-15.9e e=%-15.9e f=%-15.9e g=%-15.9e h=%-15.9e",
          trans->a, trans->b, trans->c, trans->d, trans->e, trans->f, 
          trans->g, trans->h);
-      printf("       i=%-15.9f j=%-15.9f k=%-15.9f l=%-15.9f m=%-15.9f n=%-15.9f o=%-15.9f p=%-15.9f",
+      printf("       i=%-15.9e j=%-15.9e k=%-15.9e l=%-15.9e m=%-15.9e n=%-15.9e o=%-15.9e p=%-15.9e",
          trans->i, trans->j, trans->k, trans->l, trans->m, trans->n,
          trans->o, trans->p);
       break;

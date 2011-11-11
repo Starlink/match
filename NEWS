@@ -1,3 +1,9 @@
+version 0.12  11/22/2010
+    Fixed the description of the "outfile=" argument in the USAGE section
+    of "match.html".
+   
+    Added a printf statement in "make_vote_matrix()" in atpmatch.c.
+
 version 0.11  6/26/2010
     Changed output TRANS elements format from %15.9f to %15.9e; should
     increase accuracy of subsequent calculations when values are small.

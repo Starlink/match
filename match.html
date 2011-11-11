@@ -18,8 +18,7 @@ updated Dec 31, 2001 (ver 0.5) <br>
 updated Jun 19, 2002 (ver 0.6) <br>
 updated Oct 25, 2003 (ver 0.8) <br>
 updated Feb 17, 2007 (ver 0.9) <br>
-updated Jun 11, 2008 (ver 0.10) <br>
-updated Jun 26, 2010 (ver 0.11) <br>
+updated Nov 22, 2010 (ver 0.12) <br>
 </h4>
 
 <P>
@@ -172,11 +171,13 @@ may appear in any order.  The arguments are:
                             the program will not check, and strange
                             behavior will result if duplicate IDs occur)
 
+
+
      outfile=abc    place output in files with base name "abc"
-                           abc.mtA         those in A which do match
-                           abc.mtB         those in A which do match
-                           abc.unA         those in B which don't match
-                           abc.unB         those in B which don't match
+                      abc.mtA  items from list A which had matches in list B
+                      abc.mtB  items from list B which had matches in list A
+                      abc.unA  items from list A which had no matches in list B
+                      abc.unB  items from list B which had no matches in list A
 
      trirad=0.001   critical value for counting triangles as a match
                           (default value 0.002; see below)

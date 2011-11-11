@@ -1,3 +1,9 @@
+version 0.14  11/04/2011
+
+    Added "rotangle=" and "rottol=" arguments, so that the user can 
+    now specify a permitted range of rotation angles between the
+    two coordinate systems.
+
 version 0.13  11/30/2010
 
     Added a Unix-style man page which is extracted by hand (ugh) from

@@ -1,3 +1,8 @@
+12/05/2011  New arguments to allow user to specify rotation
+               The "rotangle=" and "rottol=" arguments allow user
+                   to specify an allowed range of rotation angles
+                   between the two sets of coordinates
+
 11/30/2010  Added Unix-style man page, "install" target
 
 6/26/2010   Very minor changes

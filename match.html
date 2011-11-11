@@ -20,6 +20,7 @@ updated Oct 25, 2003 (ver 0.8) <br>
 updated Feb 17, 2007 (ver 0.9) <br>
 updated Nov 22, 2010 (ver 0.12) <br>
 updated Nov 30, 2010 (ver 0.13) <br>
+updated Nov 4, 2011 (ver 0.14) <br>
 </h4>
 
 <P>
@@ -145,6 +146,7 @@ USAGE:
                     [id1=] [id2=] [max_iter=] [halt_sigma=] 
                     [outfile=] [trirad=] [nobj=] [matchrad=] 
                     [scale=] [min_scale=] [max_scale=] [transonly] 
+                    [rotangle=] [rottol=] 
                     [recalc] [linear|quadratic|cubic]
                     [medtf] [medsigclip=]  [intrans=] [identity [xsh=] [ysh=]]
                     [--version] [--help] [help]
@@ -199,6 +201,16 @@ may appear in any order.  The arguments are:
                           the given scale factor are counted as matches
      max_scale=2.5  if present, only triangles with ratios less than
                           the given scale factor are counted as matches
+ 
+     rotangle=30    if present, then only triangles which are rotated 
+                          relative to each other by the given angle 
+                          (in degrees) are counted as matches;
+                          requires the 'rottol' argument as well
+     rottol=0.5     if present, then only triangles which are rotated
+                          relative to each other by 'rotangle' degrees
+                          plus or minus this amount (degrees) 
+                          are counted as matches;
+                          requires the 'rotangle' argument as well
 
      max_iter=3     during the solution process, there is a loop in which
                           the code matches stars in the two lists, finds
@@ -312,6 +324,18 @@ The user can control the "scale factor window" in two ways:
      The window extends from the <i>min_scale</i> to <i>max_scale</i>,
 	  including both boundaries.
 </UL>
+
+<P>
+Another way the user can control the matching of triangles 
+is to specify a "rotation angle".  In order for a triangle in list A
+to count as a match with one in list B, the two must be rotated 
+relative to each other
+by this amount (in degrees).  
+The user must provide both <i>rotangle</i> and <i>rottol</i>
+arguments;
+if the user provides only one of these two arguments,
+the program will halt with an error message.
+All angles should be specified in the range (-180, 180) degrees.
 
 <P>
 If the two lists are known to have the same scale and rotation,

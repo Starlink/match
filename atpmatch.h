@@ -147,6 +147,14 @@
     */
 #define AT_MATCH_PERCENT      10
 
+   /* 
+    * If desired, the user may specify that two triangles count as a match
+    * only if their relative orientation falls within some range
+    * of rotation (in degrees).  However, if the user does NOT
+    * specify such a desired range, we can use this value as a marker
+    * to denote that any rotation is permitted.
+    */
+#define AT_MATCH_NOANGLE      -999.0
 
    /* 
     * this holds information on a single star (or object) 
@@ -169,6 +177,9 @@ typedef struct s_star {
     *           side a = dist(bc)    is the longest side
     *                b = dist(ac)    is the second-longest side
     *                c = dist(ab)    is the shortest side
+    *
+    *           side_a_angle         is the angle in radians defined by 
+    *                                    the longest side, relative to x-axis
     */
 typedef struct s_triangle {
    int id;                  /* used for internal debugging purposes only */
@@ -180,6 +191,7 @@ typedef struct s_triangle {
    int b_index;             /* index of the star opposite side b */
    int c_index;             /* index of the star opposite side c */
    int match_id;            /* ID of triangle in other list which matches */
+   double side_a_angle;     /* angle from one star to other in longest side */
    struct s_triangle *next; /* we use linked lists internally */
 } s_triangle;               
    
@@ -190,6 +202,7 @@ typedef struct s_triangle {
 
 int atFindTrans(int numA, s_star *listA, int numB, s_star *listB, 
                 double radius, int nbright, double min_scale, double max_scale, 
+                double rotation_deg, double tolerance_deg,
                 int max_iter, double halt_sigma, TRANS *trans);
 
 int atApplyTrans(int num, s_star *list, TRANS *trans);
@@ -206,6 +219,7 @@ atSmallTrans(int numA, struct s_star *listA,
              int numB, struct s_star *star_array_B,
              int num_triangles_B, struct s_triangle *triangle_array_B,
              double radius, int nobj, double min_scale, double max_scale,
+             double rotation_deg, double tolerance_deg,
              int max_iter, double halt_sigma, 
              TRANS *trans, int *ntop, int **top_votes);
 

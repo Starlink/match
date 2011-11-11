@@ -1,0 +1,381 @@
+.TH match 1  "November 30, 2010" "version 0.13" "USER COMMANDS"
+.SH name
+match \- match two lists of stars
+.SH synopsis
+.B match
+fileA xcolA ycolA magcolA fileB xcolB ycolB magcolB
+       [id1=] [id2=] [max_iter=] [halt_sigma=]
+       [outfile=] [trirad=] [nobj=] [matchrad=] 
+       [scale=] [min_scale=] [max_scale=] [transonly] 
+       [recalc] [linear|quadratic|cubic]
+       [medtf] [medsigclip=]  [intrans=] [identity [xsh=] [ysh=]]
+       [\-\-version] [\-\-help] [help]
+
+.SH DESCRIPTION
+This program is designed to match up items in two different
+lists, which may have two different systems of coordinates.
+The program allows the two sets of coordinates to be related
+by a linear, quadratic, or cubic transformation.  It is an implementation
+of the algorithm described in 
+Valdes et al., Publications of the Astronomical Society of the Pacific, 
+vol 107, page 1119 (1995);
+see also
+Droege et al., Publications of the Astronomical Society of the Pacific,
+vol 118, page 1666 (2006).
+
+.PP
+The basic idea is to select the brightest 
+.B nobj
+objects from each list,
+then to create a (very large) set of triangles using the stars in each list.
+By finding similar triangles in the two sets,
+one can identify matching stars from the two lists.
+This method is insensitive to translation, rotation, scaling, 
+and inversion, but it can take a long time.
+After finding candidate matching pairs, the program 
+enters a loop in which it
+computes a geometric transformation,
+determines the residuals between the actual and transformed
+coordinates,
+and discards the the most discrepant items;
+the user can set parameters controlling the iteration
+of this loop using command-line arguments 
+.B max_iter
+and
+.B halt_sigma.
+
+
+.SH OPTIONS
+
+.TP 
+id1=N
+column in fileA containing "ID" value of items
+
+.TP
+id2=N
+column in fileB containing "ID" value of items
+(the values must be unique within each list;
+the program will not check, and strange
+behavior will result if duplicate IDs occur)
+
+.TP 
+outfile=abc    
+place output in files with base name "abc"
+.nf
+    abc.mtA    items from list A which had matches in list B
+    abc.mtB    items from list B which had matches in list A
+    abc.unA    items from list A which had no matches in list B
+    abc.unB    items from list B which had no matches in list A
+.fi
+
+.TP 
+trirad=0.001   
+critical value for counting triangles as a match 
+(default value 0.002; see below)
+
+
+.TP 
+nobj=30        
+use the brightest 'nobj' values in each list
+during the matching process (default value 20)
+
+.TP 
+matchrad=4     
+after applying transformation to listA, so that both
+lists are in coordinate system of listB, 
+items from the two lists must be within this 
+distance to count as 'matched'
+(default value 5)
+
+.TP
+scale=2.0      
+if present, only triangles with the given scale factor
+are counted as matches (in this example, 
+only triangles in coord system A which are
+about 2.0 times larger than triangles in coord
+system B are counted as matches)
+
+.TP
+min_scale=1.5  
+if present, only triangles with ratios greater than
+the given scale factor are counted as matches
+
+.TP
+max_scale=2.5  
+if present, only triangles with ratios less than
+the given scale factor are counted as matches
+
+.TP
+max_iter=3     
+during the solution process, there is a loop in which
+the code matches stars in the two lists, finds
+the residuals for each pair, and discards pairs
+with big residuals.  This argument sets a limit
+on the number of times this loop can be entered.
+Default value is given by AT_MATCH_MAXITER
+parameter in atpmatch.h, currently 3.
+
+.TP
+halt_sigma=1.0e-12
+during the solution process, if the typical residual
+between pairs of stars in the two lists drops
+to this level, stop iterating and declare success.
+The units are the square of the units in the
+second list of stars; often, radians squared.
+Default value is given by AT_MATCH_HALTSIGMA
+parameter in atpmatch.h, currently 1.0e-12.
+
+.TP
+transonly      
+if present, stop after having derived a transformation
+which best takes the 'nobj' objects from list 
+A into objects in list B.  Don't go on to
+find the matching objects explicitly.
+
+.TP
+recalc
+if present, after having derived a transformation with
+the brightest 'nobj' objects, and having applied
+that transformation to ALL the objects in list A,
+derive a transformation again, this time using
+ALL the objects in list A and list B
+
+.TP
+linear         
+use a linear transformation (the default)
+
+.TP
+quadratic      
+use a quadratic transformation
+
+.TP
+cubic 
+use a cubic transformation
+	  
+.TP
+medtf          
+calculate the MEDTF statistics (see below);
+assumes that a simple translation connects
+the two lists
+
+.TP
+medsigclip=N   
+discard matched pairs more than N stdev from the
+median offset before calculating MEDTF statistics
+
+.TP
+identity       
+as an initial guess, use a linear TRANS in which there
+is no rotation, change in scale, or translation
+(unless xsh= and ysh= are specified)
+
+.TP
+xsh=
+in initial guess, use linear TRANS with the given 
+translation in the 'x' direction
+
+.TP
+ysh=           
+in initial guess, use linear TRANS with the given 
+translation in the 'x' direction
+
+.TP
+intrans=file   
+as an initial guess, use the TRANS which is given
+in the ASCII text file 'file' (see below
+for the format)
+
+.TP
+\-\-version      
+print the current version number and exit
+
+.TP
+--help         
+print list of command-line options
+
+.TP
+help           
+print list of command-line options
+
+
+
+.PP
+The argument "trirad" may need some extra explanation.  For a full
+desciption, see 
+the paper by Valdes et al.
+In short, stars are grouped
+into triangles, the sides of which are labelled "a", "b" and "c"
+in order of decreasing size.  The normalized ratios
+.B b/a
+and 
+.B c/a
+.fi
+are formed for each triangle.  In order for a triangle, t1, from
+one list to be considered identical to a triangle, t2, in the other
+list, it must satisfy the equation
+
+.nf
+     sqrt[ (t1.ba - t2.ba)^2 + (t1.ca - t2.ca)^2 ] <= trirad
+.fi
+
+So the value of "trirad" has units of neither list; it exists
+in a two-dimensional "triangle-space" formed by the coordinates
+b/a and c/a (each of which ranges from 0.0 to 1.0).
+
+.PP
+One way the user can control the matching of triangles is to
+specify a "scale factor".  Only triangles with a ratio of 
+size falling with a particular window will be counted as
+matches.
+The user can control the "scale factor window" in two ways:
+
+.RS 5
+using the 
+.B scale=
+option alone; for example,
+.B scale=1.5
+The window is centered on the given factor, and 
+extends a percentage (AT_MATCH_PERCENT) above it and below it.
+.RE
+
+.RS 5
+using both 
+.B min_scale
+and 
+.B max_scale
+together; for example,
+.B min_scale=1.3 max_scale=1.7
+The window extends from the 
+.B min_scale 
+to 
+.B max_scale,
+including both boundaries.
+.RE
+
+.PP
+If the two lists are known to have the same scale and rotation,
+the user may use the 
+.B identity 
+keyword to force an 
+initial guess at the TRANS: a linear model with
+.nf
+     a=0.0   b=1.0   c=0.0
+     d=0.0   e=0.0   f=1.0
+.fi
+The program will use this initial TRANS structure to match
+up the items in the two lists, rather than trying to figure 
+out the transformation itself.
+After looking for matched items with this fixed model,
+the program will use the matched pairs it finds to define
+an improved TRANS.
+
+.PP
+In a similar vein, if the user knows that the scale and rotation
+of the two sets of objects are identical, but there is a fixed
+and known translation of 
+XX units in the x-direction 
+and YY units in the y-direction, he can use
+the 
+.B identity
+keyword with additional arguments
+.nf
+     xsh=XX  ysh=YY
+.fi
+which will create an initial TRANS with
+.nf
+     a=XX    b=1.0   c=0.0
+     d=YY    e=0.0   f=1.0
+.fi
+
+.PP
+Finally, for ultimate control, the user may specify the
+exact values of the coefficients for the initial TRANS
+via the 
+.B intrans=filename 
+option.
+The program will look for an ASCII text file with
+the given filename, which must have the following format:
+.nf
+  a)  blank lines are skipped
+  b)  lines starting with the '#' character are skipped
+  c)  the first non-skipped line must describe the order of the model, 
+         either by one of the following keywords
+
+             linear quadratic cubic
+
+         or by a line like norder=NN, in which
+         NN has value 1 for linear, 2 for quadratic, or 3 for cubic.
+  d) all following non-blank lines must give values for the coefficients
+         of the specified TRANS model, in the general form
+
+             a=33.34
+             b=1.3e-4
+             c 99.01
+             d -5.323e1
+        Note that the equals sign between the coefficient and the value
+	     is optional
+.fi
+
+.PP
+In any case, if the user specifies the initial TRANS, either 
+via the 
+.B identity 
+or 
+.B intrans 
+method,
+that initial model is used to convert the coordinates of 
+objects in list A into the system of list B.
+The program then looks for matches within the 
+.B matchrad units.
+It then uses only the matched pairs 
+to generate an improved TRANS model.
+        
+
+On the other hand, if the user does NOT provide 
+an initial TRANS model,
+the program searches for one itself.
+After its first guess,
+the code matches up
+candidate pairs of stars from the two lists.
+It then enters a loop in which it calculates a plate solution,
+applies the solution to the stars in list A, 
+then compares the predicted positions from list A to the
+actual positions of stars in list B.
+Based on those residuals, the code marks some of the
+pairs as "bad", discards them, and goes back to the top
+of the loop.
+The 
+.B max_iter 
+and 
+.B halt_sigma 
+arguments can be used 
+to control the number of times the code enters this
+loop and discards possible matches.
+Note that, if one uses the 
+.B project_coords 
+routine to turn (RA, Dec) positions from a catalog
+into an input list, 
+the units will of this list will be radians;
+hence, the residuals from a solution against this list
+will be in radians squared.
+A typical residual of 1 arcsec corresponds to 
+.B halt_sigma
+of 2.4e-11 radians squared.
+
+
+.SH SEE ALSO
+The web pages for the match program contain
+additional documentation and a description of
+the associated 
+.B project_coords
+and
+.B apply_match
+programs.
+Read them at
+.I http://spiff.rit.edu/match/
+
+
+.SH AUTHOR
+Michael Richmond < mwrsps at rit dot edu >
+
+

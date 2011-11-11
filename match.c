@@ -87,6 +87,11 @@
  *                 simply prints a warning message and returns
  *                 with normal code.
  *             MWR
+ * 
+ * 11/4/2011 - Added new options "rotangle=" and "rottol=",
+ *                 so that user may specify a range of allowed rotations
+ *                 between the two lists of stars.
+ *             MWR
  *
  * </AUTO>
  *
@@ -117,8 +122,9 @@ static int prepare_to_recalc(char *outfile,
                " <ref_starfile2> <x2> <y2> <mag2>\n"\
                " [id1=] [id2=] [max_iter=] [halt_sigma=] \n"\
                " [outfile=] [trirad=] [nobj=] [matchrad=] \n"\
-					" [scale=] [min_scale=] [max_scale=] [transonly] \n"\
-				   " [recalc] [linear|quadratic|cubic]\n"\
+               " [scale=] [min_scale=] [max_scale=] [transonly] \n"\
+               " [rotangle=] [rottol=] \n"\
+               " [recalc] [linear|quadratic|cubic]\n"\
                " [medtf] [medsigclip=] "\
                " [intrans=] [identity [xsh=] [ysh=]]\n"\
                " [--version] [--help] [help]\n"
@@ -147,6 +153,8 @@ main
    double scale = -1.0;                          
    double min_scale = -1.0;                          
    double max_scale = -1.0;                          
+   double rot_angle = AT_MATCH_NOANGLE;    /* by default, any angle is okay */
+   double rot_tol = AT_MATCH_NOANGLE;
    double halt_sigma = AT_MATCH_HALTSIGMA;
    double medsigclip = 0.0;                     /* used in MEDTF calcs */
    double xshift = 0.0;                         /* guessed shift in X dir */
@@ -274,6 +282,22 @@ main
          }
          if (max_scale <= 0) {
             shFatal("invalid value %lf for max_scale: must be > 0", max_scale);
+         }
+      }
+      else if (strncmp(argv[i], "rotangle=", 9) == 0) {
+         if (sscanf(argv[i] + 9, "%lf", &rot_angle) != 1) {
+            shFatal("invalid value for rotangle argument");
+         }
+         if ((rot_angle < -180) || (rot_angle > 180)) {
+            shFatal("invalid value %lf for rotangle: must be between -180 and 180 degrees", rot_angle);
+         }
+      }
+      else if (strncmp(argv[i], "rottol=", 7) == 0) {
+         if (sscanf(argv[i] + 7, "%lf", &rot_tol) != 1) {
+            shFatal("invalid value for rottol argument");
+         }
+         if ((rot_tol < -180) || (rot_tol > 180)) {
+            shFatal("invalid value %lf for rottol: must be between -180 and 180 degrees", rot_tol);
          }
       }
 		else if (strncmp(argv[i], "outfile=", 8) == 0) {
@@ -433,6 +457,25 @@ main
       printf("using min_scale %f  max_scale %f \n", min_scale, max_scale);
    }
 #endif
+
+   /* 
+    * Check to make sure that the user specified 
+    *
+    *       a)   neither "rotangle" nor "rottol"
+    *   or          
+    *       b)   both "rotangle" and "rottol"
+    */
+   if ((rot_angle == AT_MATCH_NOANGLE) && (rot_tol == AT_MATCH_NOANGLE)) {
+       /* this is okay */
+   } 
+   else if ((rot_angle != AT_MATCH_NOANGLE) && (rot_tol != AT_MATCH_NOANGLE)) {
+       /* this is okay */
+   }
+   else {
+       /* this is NOT okay */
+       shFatal("Must specify both 'rotangle' and 'rottol', or neither ");
+   }
+  
 		
 	/* Can only specify one of 'identity' and 'intrans' */
 	if ((intrans != 0) && (identity != 0)) {
@@ -544,6 +587,7 @@ main
 	if (intrans == 0) {
       ret = atFindTrans(numA, star_list_A, numB, star_list_B,
                 triangle_radius, nobj, min_scale, max_scale, 
+                rot_angle, rot_tol,
                 max_iter, halt_sigma, trans);
       if (ret != SH_SUCCESS) {
           shFatal("initial call to atFindTrans fails");

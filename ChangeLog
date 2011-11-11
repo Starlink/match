@@ -1,3 +1,16 @@
+12/05/2011  New arguments to allow user to specify rotation
+               The "rotangle=" and "rottol=" arguments allow user
+                   to specify an allowed range of rotation angles
+                   between the two sets of coordinates
+
+11/30/2010  Added Unix-style man page, "install" target
+
+6/26/2010   Very minor changes
+                Now print elements of TRANS as %15.9e instead of %15.9f
+                   should increase accuracy when elements have small values
+                Added information in debug printf in "atpmatch.c"
+                   now print the ratio of triangle scales when a match is found
+                
 6/11/2008   Bug fix in "apply_match.c"
                 added extra %s in sscanf statement
 

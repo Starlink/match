@@ -129,6 +129,11 @@
   *                atFindMedtf
   *             Nov 22, 2002
   *           Michael Richmond
+  *
+  *           Added the ratio of triangle sizes to a debugging printf
+  *             statement in make_vote_matrix.
+  *             June 26, 2010
+  *           Michael Richmond
   */
 
 
@@ -219,7 +224,8 @@ static int **make_vote_matrix(s_star *star_array_A, int num_stars_A,
                               s_triangle *t_array_A, int num_triangles_A,
                               s_triangle *t_array_B, int num_triangles_B,
                               int nbright, double radius, 
-                              double min_scale, double max_scale);
+                              double min_scale, double max_scale,
+                              double rotation_deg, double tolerance_deg);
 #ifdef DEBUG
 static void print_vote_matrix(int **vote_matrix, int numcells);
 #endif
@@ -287,6 +293,11 @@ static int write_small_arrays(double ra, double dec,
                               int num_stars, struct s_star *star_array,
                               int nbright, int num_triangles,
                               struct s_triangle *t_array, char *outfile);
+static int is_desired_rotation(struct s_triangle *tri_1, 
+                               struct s_triangle *tri_2,
+                               double want_angle_deg, 
+                               double tolerance_deg,
+                               double *actual_angle_deg);
 
    /* 
     * we have three different versions of a routine to do the
@@ -358,6 +369,10 @@ atFindTrans
                          /*       if -1, any scale factor is allowed */
    double max_scale,     /* I: maximum permitted relative scale factor */
                          /*       if -1, any scale factor is allowed */
+   double rotation_deg,  /* I: desired relative angle of coord systems (deg) */
+                         /*       if AT_MATCH_NOANGLE, any orientation is allowed */
+   double tolerance_deg, /* I: allowed range of orientation angles (deg) */
+                         /*       if AT_MATCH_NOANGLE, any orientation is allowed */
    int max_iter,         /* I: go through at most this many iterations */
                          /*       in the iter_trans() loop. */
    double halt_sigma,    /* I: halt the fitting procedure if the mean */
@@ -511,7 +526,8 @@ atFindTrans
                                   star_array_B, num_stars_B,
                                   triangle_array_A, num_triangles_A,
                                   triangle_array_B, num_triangles_B,
-                                  nbright, radius, min_scale, max_scale);
+                                  nbright, radius, min_scale, max_scale,
+                                  rotation_deg, tolerance_deg);
 
 
    /*
@@ -1140,6 +1156,10 @@ atSmallTrans
                            /*       if -1, any scale factor is allowed */
    double max_scale,       /* I: maximum permitted relative scale factor */
                            /*       if -1, any scale factor is allowed */
+   double rotation_deg,    /* I: desired relative angle of coord systems (deg) */
+                           /*       if AT_MATCH_NOANGLE, any orientation is allowed */
+   double tolerance_deg,   /* I: allowed range of orientation angles (deg) */
+                           /*       if AT_MATCH_NOANGLE, any orientation is allowed */
    int max_iter,           /* I: go through at most this many iterations */
                            /*       in the iter_trans() loop. */
    double halt_sigma,      /* I: halt the fitting procedure if the mean */
@@ -1305,7 +1325,8 @@ atSmallTrans
                                   star_array_B, num_stars_B,
                                   triangle_array_A, num_triangles_A,
                                   triangle_array_B, num_triangles_B,
-                                  nbright, radius, min_scale, max_scale);
+                                  nbright, radius, min_scale, max_scale,
+                                  rotation_deg, tolerance_deg);
 
 
 
@@ -1879,6 +1900,12 @@ set_triangle
       tri->ba = 1.0;
       tri->ca = 1.0;
    }
+   tri->side_a_angle = atan2(star_array[tri->a_index].y - star_array[tri->b_index].y, 
+                             star_array[tri->a_index].x - star_array[tri->b_index].x);
+#ifdef DEBUG2
+   printf(" triangle %5d  has side_a_angle %lf = %lf deg \n",
+       tri->id, tri->side_a_angle, tri->side_a_angle*(180/3.14159));
+#endif
 
    tri->match_id = -1;
    tri->next = (s_triangle *) NULL;
@@ -2540,6 +2567,11 @@ prune_triangle_array
  * ratio of triangles (indicated by "a_length" members)
  * is outside the given values.
  *
+ * If "rotation_deg" and "tolerance_deg" are not both AT_MATCH_NOANGLE,
+ * then disallow any match for which the two triangles
+ * are not oriented at an angle of "rotation_deg" degrees
+ * relative to each other (with a tolerance of "tolerance_deg" degrees).
+ *
  * For each pair of triangles that matches, increment
  * the "vote" in each "vote cell" for each pair of matching
  * vertices.
@@ -2577,8 +2609,12 @@ make_vote_matrix
                               /*       a matching pair. */
    double min_scale,          /* I: minimum permitted relative scale factor */
                               /*       if -1, any scale factor is allowed */
-   double max_scale           /* I: maximum permitted relative scale factor */
+   double max_scale,          /* I: maximum permitted relative scale factor */
                               /*       if -1, any scale factor is allowed */
+   double rotation_deg,    /* I: desired relative angle of coord systems (deg) */
+                           /*       if AT_MATCH_NOANGLE, any orientation is allowed */
+   double tolerance_deg    /* I: allowed range of orientation angles (deg) */
+                           /*       if AT_MATCH_NOANGLE, any orientation is allowed */
    )
 {
    int i, j, start_index;
@@ -2586,6 +2622,7 @@ make_vote_matrix
    double ba_A, ba_B, ca_A, ca_B, ba_min, ba_max;
    double rad2;
    double ratio;
+   double actual_angle_deg;
    struct s_triangle *tri;
 
    shAssert(star_array_A != NULL);
@@ -2700,10 +2737,24 @@ make_vote_matrix
                }
             }
 
+            /* 
+             * check the relative orientations of the triangles.
+             * If they don't match the desired rotation angle, 
+             * discard this match.
+             */
+            if (rotation_deg != AT_MATCH_NOANGLE) {
+               if (is_desired_rotation(&(t_array_A[i]), &(t_array_B[j]), 
+                          rotation_deg, tolerance_deg, &actual_angle_deg) == 0) {
+                  continue;
+               }
+            }
+ 
+
 	    /* we have a (possible) match! */
 #ifdef DEBUG2
-	    printf("   match!  A: (%6.3f, %6.3f)   B: (%6.3f, %6.3f) \n",
-		  ba_A, ca_A, ba_B, ca_B);
+       ratio = t_array_A[i].a_length/t_array_B[j].a_length;
+	    printf("   match!  A: (%6.3f, %6.3f)   B: (%6.3f, %6.3f)  ratio %9.4e  angle %9.4e\n",
+		  ba_A, ca_A, ba_B, ca_B, ratio, actual_angle_deg);
 #endif
 	    /* 
 	     * increment the vote_matrix cell for each matching pair 
@@ -6734,3 +6785,106 @@ int atCalcRMS
 
    return(SH_SUCCESS);
 }
+
+
+
+
+/***************************************************************************
+ * PROCEDURE: is_desired_rotation
+ *
+ * DESCRIPTION: 
+ * We are given two triangles and a desired relative rotation angle
+ * (and tolerance).
+ * Our job is to determine if the two triangles are rotated relative
+ * to each other by the given angle, within the tolerance.
+ *
+ * This is a little tricky, because we need to allow for angles 
+ * wrapping around the range of (-pi, +pi) in radians, or (-180, +180) 
+ * in degrees.  We therefore make two checks, first without any 
+ * wrapping, and then with the appropriate wrapping; if either check
+ * succeeds, we return with SH_SUCCESS.
+ *
+ * We place the actual measured rotation angle (in degrees) between 
+ * these two triangles into the 'actual_angle' argument.
+ *
+ * RETURN:
+ *    1            if the two triangles are rotated by the desired angle
+ *    0            if not 
+ *
+ * </AUTO>
+ */
+
+static int
+is_desired_rotation
+   (
+   struct s_triangle *tri_A,    /* I: first triangle */
+   struct s_triangle *tri_B,    /* I: second triangle */
+   double want_angle_deg,       /* I: desired rotation, in degrees */
+   double tolerance_deg,        /* I: accept any rotation within this amount */
+                                /* I:   of desired value, in degrees */
+   double *actual_angle_deg     /* O: the measured rotation angle between */
+                                /*      the triangles, in degrees */
+   )
+{
+   int is_good_angle;
+   double min_angle_deg, max_angle_deg, wrapped_delta_deg;
+   double delta_angle, delta_angle_deg;
+
+   is_good_angle = 0;
+   min_angle_deg = want_angle_deg - tolerance_deg;
+   max_angle_deg = want_angle_deg + tolerance_deg;
+
+   delta_angle = tri_A->side_a_angle - tri_B->side_a_angle;
+   delta_angle_deg = delta_angle*(180.0/3.15159);
+#ifdef DEBUG2
+   printf("delta_angle_deg %7.2f ", delta_angle_deg);
+#endif
+
+   if ((delta_angle_deg >= min_angle_deg) && (delta_angle_deg <= max_angle_deg)) {
+#ifdef DEBUG2
+      printf("   is good ");
+#endif
+      is_good_angle = 1;
+   }
+#ifdef DEBUG2
+   else {
+      printf("   is bad  ");
+   }
+#endif
+
+   /* 
+    * now we check to see if the wrapped version of the angle falls 
+    * into the desired range
+    */
+   if (delta_angle_deg > 0) {
+      wrapped_delta_deg = delta_angle_deg - 360.0;
+   }
+   else {
+      wrapped_delta_deg = delta_angle_deg + 360.0;
+   }
+#ifdef DEBUG2
+   printf("wrapped_delta_deg %7.2f ", wrapped_delta_deg);
+#endif
+   if ((wrapped_delta_deg >= min_angle_deg) && (wrapped_delta_deg <= max_angle_deg)) {
+#ifdef DEBUG2
+      printf("   is good\n");
+#endif
+      is_good_angle = 1;
+   }
+#ifdef DEBUG2
+   else {
+      printf("   is bad \n");
+   }
+#endif
+
+
+   *actual_angle_deg = delta_angle_deg;
+
+   if (is_good_angle == 1) {
+       return(1);
+   }
+   else {
+       return(0);
+   }
+}
+

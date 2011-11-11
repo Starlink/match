@@ -2246,7 +2246,7 @@ fi
 
 # Define the identity of the package.
  PACKAGE=match
- VERSION=0.12
+ VERSION=0.13
 
 
 cat >>confdefs.h <<_ACEOF

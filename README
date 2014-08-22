@@ -1,5 +1,5 @@
-match  v0.14  -  by Michael W. Richmond <mwrsps@rit.edu>
-(C)opyright 2000, 2001, 2002, 2003, 2007, 2010, 2011 Michael W. Richmond, all rights 
+match  v0.16  -  by Michael W. Richmond <mwrsps@rit.edu>
+(C)opyright 2000, 2001, 2002, 2003, 2007, 2010, 2011, 2012 Michael W. Richmond, all rights 
 reserved
 
 This package contains software to match one list of objects against
@@ -13,14 +13,13 @@ is done by the "match" program itself.
 
 The idea behind the matching of lists is to form a set of triangles
 from the points in each list, and look for similar triangles.
-The algorithm is described at length in the article
-"FOCAS Automatic Catalog Matching Algorithms", by Francisco Valdes
-et al., in Publications of the Astronomical Society of the Pacific,
-volume 107, page 1119 (1995).  See the following URL (which should
+The algorithm used in version 0.15 and 0.16 is based upon the article
+"Fast Algorithms for Matching CCD Images to a Stellar Catalogue"
+by Vello Tabur, Publications of the Astronomical Society of Australia,
+vol 24, page 189 (2007).  See the following URL (which should
 all be entered on one line)
 
-     http://adsabs.harvard.edu/cgi-bin/nph-bib_query?
-          bibcode=1995PASP..107.1119V&db_key=AST&high=39463d35aa24090
+     http://adsabs.harvard.edu/abs/2007PASA...24..189T
 
 
 INSTALLATION
@@ -28,7 +27,7 @@ INSTALLATION
 Follow the standard installation procedure:
 
   - uncompress the gzip'ed tar archive
-  - cd match-0.6
+  - cd match-0.16
   - ./configure
   - make
 

@@ -123,7 +123,7 @@ static int prepare_to_recalc(char *outfile,
                " [id1=] [id2=] [max_iter=] [halt_sigma=] \n"\
                " [outfile=] [trirad=] [nobj=] [matchrad=] \n"\
                " [scale=] [min_scale=] [max_scale=] [transonly] \n"\
-               " [rotangle=] [rottol=] \n"\
+               " [rotangle=] [rottol=] [min_req_pairs=] \n"\
                " [recalc] [linear|quadratic|cubic]\n"\
                " [medtf] [medsigclip=] "\
                " [intrans=] [identity [xsh=] [ysh=]]\n"\
@@ -146,6 +146,7 @@ main
    int x2col, y2col, mag2col;
    int id1col = -1, id2col = -1;
    int max_iter = AT_MATCH_MAXITER;
+   int min_req_pairs = AT_MATCH_MINPAIRS;
    int trans_order = AT_TRANS_LINEAR;
    char *fileA, *fileB;
    double triangle_radius = AT_TRIANGLE_RADIUS;  /* in triangle-space coords */
@@ -282,6 +283,15 @@ main
          }
          if (max_scale <= 0) {
             shFatal("invalid value %lf for max_scale: must be > 0", max_scale);
+         }
+      }
+		else if (strncmp(argv[i], "min_req_pairs=", 14) == 0) {
+         if (sscanf(argv[i] + 14, "%d", &min_req_pairs) != 1) {
+            shFatal("invalid argument for min_req_pairs argument");
+         }
+         if (min_req_pairs <= 0) {
+            shFatal("invalid value %d for max_scale: must be > 0", 
+							min_req_pairs);
          }
       }
       else if (strncmp(argv[i], "rotangle=", 9) == 0) {
@@ -495,6 +505,23 @@ main
       shFatal("Cannot specify both 'intrans' and any order ");
 	}
 
+	/* 
+	 * The minimum number of pairs required for a successful match
+	 * must be at least large enough to define the given transformation.
+	 * If the user has specified a value for 'min_req_pairs'
+	 * which is LESS than this minimum value for the desired TRANS,
+	 * print an error and terminate.
+	 */
+	if ((trans_order == AT_TRANS_LINEAR) && (min_req_pairs < 3)) {
+		shFatal("linear trans requires at least 3 matched pairs ");
+	}
+	if ((trans_order == AT_TRANS_QUADRATIC) && (min_req_pairs < 6)) {
+		shFatal("quadratic trans requires at least 6 matched pairs ");
+	}
+	if ((trans_order == AT_TRANS_CUBIC) && (min_req_pairs < 10)) {
+		shFatal("cubic trans requires at least 10 matched pairs ");
+	}
+
 	/*
 	 * There are three possibilities for the initial TRANS values:
 	 *
@@ -586,9 +613,10 @@ main
 	 */
 	if (intrans == 0) {
       ret = atFindTrans(numA, star_list_A, numB, star_list_B,
+                match_radius,
                 triangle_radius, nobj, min_scale, max_scale, 
                 rot_angle, rot_tol,
-                max_iter, halt_sigma, trans);
+                max_iter, halt_sigma, min_req_pairs, trans);
       if (ret != SH_SUCCESS) {
           shFatal("initial call to atFindTrans fails");
       }

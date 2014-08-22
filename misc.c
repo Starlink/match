@@ -1150,3 +1150,52 @@ getIdentityTrans
 }
 
 
+
+/************************************************************************
+ * ROUTINE: copyTrans
+ *
+ * DESCRIPTION:
+ * Copy all fields (except the "id" field) 
+ * from the "from" TRANS argument to the "to" argument
+ *
+ * Returns: 
+ *   nothing
+ */
+void
+copyTrans
+	(
+	TRANS *from,       /* I: copy fields from this TRANS ... */
+	TRANS *to          /* O: ... to this TRANS */
+	)
+{
+
+	shAssert(from != NULL);
+	shAssert(to != NULL);
+
+   to->order = from->order;
+   to->a = from->a;
+   to->b = from->b;
+   to->c = from->c;
+   to->d = from->d;
+   to->e = from->e;
+   to->f = from->f;
+   to->g = from->g;
+   to->h = from->h;
+   to->i = from->i;
+   to->j = from->j;
+   to->k = from->k;
+   to->l = from->l;
+   to->m = from->m;
+   to->n = from->n;
+   to->o = from->o;
+   to->p = from->p;
+	
+	to->nr = from->nr;
+	to->nm = from->nm;
+	to->sig = from->sig;
+	to->sx = from->sx;
+	to->sy = from->sy;
+
+}
+
+

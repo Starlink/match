@@ -21,6 +21,9 @@ updated Feb 17, 2007 (ver 0.9) <br>
 updated Nov 22, 2010 (ver 0.12) <br>
 updated Nov 30, 2010 (ver 0.13) <br>
 updated Nov 4, 2011 (ver 0.14) <br>
+updated Aug 17, 2012 (ver 0.15) 
+   <font color="red"> major changes </font> <br> 
+updated Oct 30, 2012 (ver 0.16) </br> 
 </h4>
 
 <P>
@@ -50,14 +53,34 @@ INTRODUCTION:
 </a>
 
 <P>
+<i>Versions 0.15, 0.16 involve a major change from previous versions. </i>
+
+<P>
   This program is designed to match up items in two different
 lists, which may have two different systems of coordinates.
 The program allows the two sets of coordinates to be related
-by a linear, quadratic, or cubic transformation.  It is an implementation
-of the algorithm described in 
+by a linear, quadratic, or cubic transformation.  
+The program has two stages, the second of which is optional.
+
+<UL>
+<LI> the first stage uses the clever method of finding
+        the most likely triangles described in
+        <a href="http://adsabs.harvard.edu/abs/2007PASA...24..189T">
+            Tabur, Publications of the Astronomical Society of Australia, vol 24, page 189 (2007). </a>
+        This replaces the more brute-force-ish method of
 <a href="http://adsabs.harvard.edu/cgi-bin/nph-bib_query?bibcode=1995PASP..107.1119V&db_key=AST&high=39463d35aa24090">
     Valdes et al., Publications of the Astronomical Society of the Pacific, vol 107, page 1119 (1995). </a>
+  </LI>
 
+<LI> the second stage iteratively discards
+        the least-well-matched pairs of stars,
+        recomputing and applying a new transformation
+        until one of several ending conditions is met.
+        This portion of the software was used in all versions of
+        <b>match</b> from 0.1 to 0.14 under the <i>recalc</i> option.
+  </LI>
+
+</UL>
 
 <P>
 <a name="input">
@@ -146,7 +169,7 @@ USAGE:
                     [id1=] [id2=] [max_iter=] [halt_sigma=] 
                     [outfile=] [trirad=] [nobj=] [matchrad=] 
                     [scale=] [min_scale=] [max_scale=] [transonly] 
-                    [rotangle=] [rottol=] 
+                    [rotangle=] [rottol=] [min_req_pairs=]
                     [recalc] [linear|quadratic|cubic]
                     [medtf] [medsigclip=]  [intrans=] [identity [xsh=] [ysh=]]
                     [--version] [--help] [help]
@@ -212,6 +235,15 @@ may appear in any order.  The arguments are:
                           are counted as matches;
                           requires the 'rotangle' argument as well
 
+     min_req_pairs=10   during stage 1 of the matching procedure,
+                          an initial guess of the transformation between
+                          the two systems is applied to the items in list A,
+                          then the lists are checked for matching items.
+                          If fewer matching pairs are found, the guess is
+                          discarded and other guesses are tried.
+                          Default value is given by AT_MATCH_MINPAIRS
+                          parameter in atpmatch.h, currently 10.
+                          
      max_iter=3     during the solution process, there is a loop in which
                           the code matches stars in the two lists, finds
                           the residuals for each pair, and discards pairs
@@ -219,14 +251,17 @@ may appear in any order.  The arguments are:
                           on the number of times this loop can be entered.
                           Default value is given by AT_MATCH_MAXITER
                           parameter in atpmatch.h, currently 3.
-     halt_sigma=1.0e-12
-                          during the solution process, if the typical residual
-                          between pairs of stars in the two lists drops
-                          to this level, stop iterating and declare success.
-                          The units are the square of the units in the
-                          second list of stars; often, radians squared.
+
+     halt_sigma=1.0   during the solution process, if the typical SQUARE of
+                          the residual between pairs of stars in the two lists 
+                          drops to this level, stop iterating and declare 
+                          success.  The units are the square of the units 
+                          in the second list of stars; often, pixels squared.
                           Default value is given by AT_MATCH_HALTSIGMA
-                          parameter in atpmatch.h, currently 1.0e-12.
+                          parameter in atpmatch.h, currently 1.0.
+                         <font color="red"> In versions 0.1 to 0.14, default
+                          value was 1.0E-12, which is appropriate for 
+                          units of radians squared. </font>
 
      transonly      if present, stop after having derived a transformation
                            which best takes the 'nobj' objects from list 
@@ -236,7 +271,12 @@ may appear in any order.  The arguments are:
                            the brightest 'nobj' objects, and having applied
                            that transformation to ALL the objects in list A,
                            derive a transformation again, this time using
-                           ALL the objects in list A and list B
+                           ALL the objects in list A and list B.
+                          <font color="red"> This triggers the second stage
+                           of matching procedure, using old algorithm.
+                           If not present, only the first stage with new
+                           algorithm is executed. </font>
+
 
      linear         use a linear transformation (the default)
      quadratic      use a quadratic transformation
@@ -721,9 +761,39 @@ HELPFUL HINTS
 </a>
 
 <P>
+Version 0.15 of the software involves a major change 
+of the method used to search for a transformation
+which connects the two coordinate systems.
+The new method, based on 
+        <a href="http://adsabs.harvard.edu/abs/2007PASA...24..189T">
+            Tabur, Publications of the Astronomical Society of Australia, vol 24, page 189 (2007) </a>,
+        involves making a list of triangles using stars in each set,
+        but then sorting those triangles in a particular manner 
+        before comparing members from set A to those in set B.
+        The method is likely to yield a valid match quickly, 
+        without having to perform an exhaustive search through the
+        very large number of triangles.
+        After each possible pair of matching triangles is
+        found, the code computes the TRANS based on those triangles
+        and applies it to all objects in set A; then it looks for 
+        matching stars in the transfored set A and input set B.
+        If a large enough number of stars match, the search
+        is declared to be successful.
+
+<P>
+This method can be quicker than that used in previous versions,
+especially for large numbers of objects;
+but its great advantage is that it is more robust.
+In other words, it is more likely to find a real matching
+transformation, if one exists, than the previous algorithm.
+
+<P>
 If you know the relative scale of the two sets of objects, 
 you should use the <i>scale</i>, or <i>min_scale</i> and <i>max_scale</i>,
 options to narrow down the possible matches.
+Likewise, if you know the relative rotation of the two sets,
+then use the <i>rotangle</i> and <i>rottol</i> options
+to restrict possible matches.
 
 <P>
 As mentioned above, if the uncertainty in positions
@@ -751,13 +821,13 @@ and then run the program with the <i>intrans=</i> option.
 
 <P>
   The algorithm creates a set of all the triangles which can
-be formed from the 'nobj' brightest members of each list:
-this set grows as 'nobj' to the sixth power (!), so that
-even a small increase in 'nobj' can lead to large increases
-in run time.  The 'recalc' option can help: one may create two
+be formed from the <i>nobj</i> brightest members of each list:
+this set grows as <i>nobj</i> to the sixth power (!), so that
+even a small increase in <i>nobj</i> can lead to large increases
+in run time.  The <i>recalc</i> option can help: one may create two
 very large lists of candidates -- say, 200 items in each --
-and then set 'nobj' to some small subset of the total.  If all
-goes well, the 'nobj' candidates will provide a rough transformation
+and then set <i>nobj</i> to some small subset of the total.  If all
+goes well, the <i>nobj</i> candidates will provide a rough transformation
 without taking too long.  That transformation may be applied
 to all 200 objects in each list, and then a better plate solution
 can be calculated, quickly, using all the objects which match.
@@ -824,12 +894,12 @@ standard deviation and causing more pairs to qualify as "bad".
 <P>
 Another way to improve the performance on a particular
 dataset is to fiddle with the 
-"max_iter" and "halt_sigma" arguments.
+<i>max_iter</i> and <i>halt_sigma</i> arguments.
 It may be a good idea to start with very low values for
-"max_iter", and large values for "halt_sigma", 
+<i>max_iter</i> and large values for <i>halt_sigma</i>,
 and look at the solutions by 
 #define'ing DEBUG in "atpmatch.c".
-One may then increase "max_iter", and decrease "halt_sigma",
+One may then increase <i>max_iter</i>, and decrease <i>halt_sigma</i>,
 and see how the solutions improve.
 
 

@@ -1,4 +1,4 @@
-match  v0.15  -  by Michael W. Richmond <mwrsps@rit.edu>
+match  v0.16  -  by Michael W. Richmond <mwrsps@rit.edu>
 (C)opyright 2000, 2001, 2002, 2003, 2007, 2010, 2011, 2012 Michael W. Richmond, all rights 
 reserved
 
@@ -13,7 +13,7 @@ is done by the "match" program itself.
 
 The idea behind the matching of lists is to form a set of triangles
 from the points in each list, and look for similar triangles.
-The algorithm used in version 0.15 is based upon the article
+The algorithm used in version 0.15 and 0.16 is based upon the article
 "Fast Algorithms for Matching CCD Images to a Stellar Catalogue"
 by Vello Tabur, Publications of the Astronomical Society of Australia,
 vol 24, page 189 (2007).  See the following URL (which should
@@ -27,7 +27,7 @@ INSTALLATION
 Follow the standard installation procedure:
 
   - uncompress the gzip'ed tar archive
-  - cd match-0.15
+  - cd match-0.16
   - ./configure
   - make
 

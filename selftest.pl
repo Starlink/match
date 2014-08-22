@@ -64,6 +64,15 @@
 #   Also some changes to other "check_" subroutines.
 # MWR 8/17/2012
 #
+#   Modified the "check_cubic()" sections; they failed
+#   because a match was found, with fewer-than-all objects
+#   and worse-than-required precision.  But by adding
+#   min_scale=0.98 and max_scale=1.02, we find the proper
+#   match again.  
+#   This change necessary due to the more robust nature
+#   of "calc_trans()" in atpmatch.c.
+# MWR 10/30/2012
+#
 
 # set this to 1 to enable lots of debugging messages
 $debug = 0;
@@ -160,20 +169,23 @@ $final_code += check_quadratic($retval);
 
 
 # now, the tests with a cubic plate solution
-$retval = `./match $input_a 1 2 3 $input_b 1 2 3 trirad=0.002 nobj=20 cubic transonly`;
+#   10/30/2012: added min_scale/max_scale args for match-0.16
+$retval = `./match $input_a 1 2 3 $input_b 1 2 3 trirad=0.002 min_scale=0.98 max_scale=1.02 nobj=20 cubic transonly`;
 if ($debug > 0) {
   printf "running cubic test, transonly.  Result is:\n";
   printf "$retval";
 }
 $final_code += check_cubic($retval);
 
-$retval = `./match $input_a 1 2 3 $input_b 1 2 3 trirad=0.002 nobj=20 cubic recalc`;
+
+#$retval = `./match $input_a 1 2 3 $input_b 1 2 3 trirad=0.002 nobj=20 cubic recalc`;
+#   10/30/2012: added min_scale/max_scale args for match-0.16
+$retval = `./match $input_a 1 2 3 $input_b 1 2 3 trirad=0.002 min_scale=0.98 max_scale=1.02 nobj=20 cubic recalc`;
 if ($debug > 0) {
   printf "running cubic test, recalc  Result is:\n";
   printf "$retval";
 }
 $final_code += check_cubic($retval);
-
 
 
 # check the "id1=" and "id2=" options

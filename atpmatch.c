@@ -134,6 +134,15 @@
   *             statement in make_vote_matrix.
   *             June 26, 2010
   *           Michael Richmond
+  *
+  *           Fixed bug in find_quick_match() which caused premature 
+  *             termination if one particular match failed.
+  *             Use new routine "check_trans_properties()" to see
+  *             if the current match is good enough for user's 
+  *             needs.  This duplicates some code, but simplifies
+  *             things from an overall view.
+  *             Aug 7, 2012.
+  *           Michael Richmond
   */
 
 
@@ -399,6 +408,10 @@ static int calc_trans_cubic(int nbright,
                           int *winner_votes, 
                           int *winner_index_A, int *winner_index_B,
                           TRANS *trans);
+static int
+check_trans_properties(TRANS *trans, 
+                          double min_scale, double max_scale,
+                          double rotation_deg, double tolerance_deg);
 
 
 
@@ -7211,6 +7224,7 @@ find_quick_match
    )
 {
 	int i_triA;
+	int failure_flag;
 	struct s_triangle *triA, *triB;
 	struct s_star_coord *star_coord_array_B;
 
@@ -7266,7 +7280,8 @@ find_quick_match
 	 *    are more likely to yield a match quickly.
 	 */
 #ifdef DEBUG2
-		printf("  find_quick_match: about to walk through A \n");
+		printf("  find_quick_match: about to walk through A  %6d\n",
+				num_triangles_A);
 #endif
 	for (i_triA = 0; i_triA < num_triangles_A; i_triA++) {
 
@@ -7275,6 +7290,9 @@ find_quick_match
 		double yt_eps;
 		double best_match_dist = 1e9;
 		
+#ifdef DEBUG2
+		printf(" top of find_quick_match, i_triA = %6d \n", i_triA);
+#endif
 
 
 		triA = &(t_array_A[i_triA]);
@@ -7324,7 +7342,8 @@ find_quick_match
 
 			triB = &(t_array_B[b_index]);	
 #ifdef DEBUG2
-			printf("      looking at triangle B %5d \n", triB->id);
+			printf("      i_triA is %6d, looking at triangle B %5d \n", 
+							i_triA, triB->id);
 #endif
 
 			ba_diff = triA->ba - triB->ba;
@@ -7388,280 +7407,281 @@ find_quick_match
          }
 
 
-
-			/* 
-			 * if we get here, then the triangles are matched!
-			 * However, they might not be the _best_ match possible.
-			 * We compute a metric for the match, and compare it to
-			 * the best match found so far; if the new match is better,
-			 * then we replace it as the best match.
-			 */
-			match_dist = (ba_diff*ba_diff) + (ca_diff*ca_diff) +
-			             (cb_diff*cb_diff);
-			if (match_dist < best_match_dist) {
-				best_match_dist = match_dist;
-				best_match_index = b_index;
-#ifdef DEBUG2
-				printf("  find_quick_match: new best match %5d dist %9.4e \n",
-							best_match_index, best_match_dist);
-#endif
-			}
-#ifdef DEBUG2
-			else {
-				printf("  find_quick_match: dist %9.4e not less than best  %9.4e \n",
-							match_dist, best_match_dist);
-			}
-#endif
-
-
-		}
-		if (best_match_index == -1) {
-			/* no matches were found */
-#ifdef DEBUG2
-			printf("  find_quick_match: no match found for A %5d \n", triA->id);
-#endif
-			continue;
-		}
-		else {
 #ifdef DEBUG2
 			printf("  find_quick_match: match found for A %5d = B %5d \n", 
-							triA->id, best_match_index);
+							triA->id, triB->id);
 #endif
-		}
-
-		/* 
-		 * now set the "triB" pointer to the element with best_match_index;
-		 *    makes code downstream easy to read, since 
-		 *        triA   =   pointer to triangle in list A
-		 *        triB   =   pointer to MATCHING triangle in list B 
-		 */
-		triB = &(t_array_B[best_match_index]);
-
-
-		/* 
-		 * okay, we have a pair of triangles which match.
-		 * This might be a "true" match, which reveals the actual
-		 * transformation between the two coordinate systems;
-		 * or it might be an unlucky false match.
-	 	 * 
-		 * To determine if this is a "true" match, we will
-		 * 
-		 *    a) use the 3 stars in each triangle to compute
-		 *         a linear TRANS between the two coord systems
-		 *
-		 *    b) apply the TRANS to all stars in the two lists
-		 *
-		 *    c) count the number of stars which end up matching
-		 *         in the transformed lists as a result.
-		 */
-
-
-		/* 
-		 * the "winner_index" arrays give the ID numbers of
-		 *   corresponding stars from each list.
-		 */
-		{
-			int *winner_index_A, *winner_index_B;
-			int nbright;
-			int *winner_votes, num_winners;
-			TRANS *test_trans;
-
+	
 			/* 
-			 * right now, we'll only need 3 elements for these
-			 *   arrays, but later on in this routine, we'll 
-			 *   need enough space for every star in each list.
+			 * now we are going to put these two triangles to
+			 *    more stringent tests
+			 *        triA   =   pointer to triangle in list A
+			 *        triB   =   pointer to MATCHING triangle in list B 
 			 */
-			winner_index_A = shMalloc(num_stars_A*sizeof(int));
-			winner_index_B = shMalloc(num_stars_B*sizeof(int));
-			if (num_stars_A > num_stars_B) {
-				winner_votes = shMalloc(num_stars_A*sizeof(int));
-			}
-			else {
-				winner_votes = shMalloc(num_stars_B*sizeof(int));
-			}
-
-			winner_index_A[0] = triA->a_index;
-			winner_index_A[1] = triA->b_index;
-			winner_index_A[2] = triA->c_index;
-			winner_index_B[0] = triB->a_index;
-			winner_index_B[1] = triB->b_index;
-			winner_index_B[2] = triB->c_index;
-			nbright = 3;
-#ifdef DEBUG2
-			printf("  list A stars %5d=%-5d %5d=%-5d %5d=%-5d \n", 
-				winner_index_A[0], star_array_A[winner_index_A[0]].id,
-				winner_index_A[1], star_array_A[winner_index_A[1]].id,
-				winner_index_A[2], star_array_A[winner_index_A[2]].id);
-			printf("  list B stars %5d=%-5d %5d=%-5d %5d=%-5d \n", 
-				winner_index_B[0], star_array_B[winner_index_B[0]].id,
-				winner_index_B[1], star_array_B[winner_index_B[1]].id,
-				winner_index_B[2], star_array_B[winner_index_B[2]].id);
-#endif
-
-			/* we create a linear TRANS just for this test */
-			test_trans = atTransNew();
-			test_trans->order = AT_TRANS_LINEAR;	
-
-
+	
+	
 			/* 
-			 * we iterate the following process:
+			 * okay, we have a pair of triangles which match.
+			 * This might be a "true" match, which reveals the actual
+			 * transformation between the two coordinate systems;
+			 * or it might be an unlucky false match.
+		 	 * 
+			 * To determine if this is a "true" match, we will
+			 * 
+			 *    a) use the 3 stars in each triangle to compute
+			 *         a linear TRANS between the two coord systems
 			 *
-			 *    1. find a TRANS 
-			 *    2. apply TRANS to all stars, and look for matches
-			 *          (and then prune poor matches)
-			 *    3. compute statistics of the matched pairs
-			 *    4. decide whether to quit or continue
-			 *       4a.   quit, or
-			 *       4b.   go to step 1
+			 *    b) apply the TRANS to all stars in the two lists
+			 *
+			 *    c) count the number of stars which end up matching
+			 *         in the transformed lists as a result.
+			 */
+	
+			failure_flag = 0;
+	
+			/* 
+			 * the "winner_index" arrays give the ID numbers of
+			 *   corresponding stars from each list.
 			 */
 			{
-			int iter, num_iter;
-
-			num_iter = max_iterations;
-
-			for (iter = 0; iter < num_iter; iter++) {
-
-				if (calc_trans(nbright, 
-	                          star_array_A, num_stars_A,
-	                          star_array_B, num_stars_B, 
-	                          winner_votes, 
-	                          &(winner_index_A[0]), &(winner_index_B[0]),
-	                          test_trans) != SH_SUCCESS) {
-					shError("find_quick_match: calc_trans fails");
-					return(SH_GENERIC_ERROR);
-				}
-	#ifdef DEBUG2
-				printf("  find_quick_match: calc_trans succeeds \n");
-				print_trans(test_trans);
-	#endif
+				int *winner_index_A, *winner_index_B;
+				int nbright;
+				int *winner_votes, num_winners;
+				TRANS *test_trans;
 	
 				/* 
-				 * Is this really a good TRANS?  To find out, we apply
-				 * it to all the stars in list A, then check to see how
-				 * many match with stars in list B.  
-				 *
-				 * After running "apply_trans_and_find_matches()",
-				 *    a) the number of matching pairs will be set
-				 *          in the "num_winners" variable
-				 *    b) the indices of matching pairs
-				 *          from each list will be set in
-				 *          the "winner_index_A[]" and
-				 *          "winner_index_B[[]" arrays
+				 * right now, we'll only need 3 elements for these
+				 *   arrays, but later on in this routine, we'll 
+				 *   need enough space for every star in each list.
 				 */
+				winner_index_A = shMalloc(num_stars_A*sizeof(int));
+				winner_index_B = shMalloc(num_stars_B*sizeof(int));
+				if (num_stars_A > num_stars_B) {
+					winner_votes = shMalloc(num_stars_A*sizeof(int));
+				}
+				else {
+					winner_votes = shMalloc(num_stars_B*sizeof(int));
+				}
 	
+				winner_index_A[0] = triA->a_index;
+				winner_index_A[1] = triA->b_index;
+				winner_index_A[2] = triA->c_index;
+				winner_index_B[0] = triB->a_index;
+				winner_index_B[1] = triB->b_index;
+				winner_index_B[2] = triB->c_index;
+				nbright = 3;
 	#ifdef DEBUG2
-				printf("  before apply_trans_and_find_matches, num_stars_B %5d \n",
-							num_stars_B);
+				printf("  list A stars %5d=%-5d %5d=%-5d %5d=%-5d \n", 
+					winner_index_A[0], star_array_A[winner_index_A[0]].id,
+					winner_index_A[1], star_array_A[winner_index_A[1]].id,
+					winner_index_A[2], star_array_A[winner_index_A[2]].id);
+				printf("  list B stars %5d=%-5d %5d=%-5d %5d=%-5d \n", 
+					winner_index_B[0], star_array_B[winner_index_B[0]].id,
+					winner_index_B[1], star_array_B[winner_index_B[1]].id,
+					winner_index_B[2], star_array_B[winner_index_B[2]].id);
 	#endif
-				if (apply_trans_and_find_matches(
-						star_array_A, num_stars_A,
-						star_array_B, num_stars_B,
-						star_coord_array_B,
-						star_match_radius,
-						test_trans,
-						&num_winners,
-						&(winner_index_A[0]), &(winner_index_B[0])) != SH_SUCCESS) {
+	
+				/* we create a linear TRANS just for this test */
+				test_trans = atTransNew();
+				test_trans->order = AT_TRANS_LINEAR;	
+	
+	
+				/* 
+				 * we iterate the following process:
+				 *
+				 *    1. find a TRANS 
+				 *    2. apply TRANS to all stars, and look for matches
+				 *          (and then prune poor matches)
+				 *    3. compute statistics of the matched pairs
+				 *    4. decide whether to quit or continue
+				 *       4a.   quit, or
+				 *       4b.   go to step 1
+				 */
+				{
+				int iter, num_iter;
+	
+				num_iter = max_iterations;
+	
+				for (iter = 0; iter < num_iter; iter++) {
+	
+					if (calc_trans(nbright, 
+		                          star_array_A, num_stars_A,
+		                          star_array_B, num_stars_B, 
+		                          winner_votes, 
+		                          &(winner_index_A[0]), &(winner_index_B[0]),
+		                          test_trans) != SH_SUCCESS) {
+#ifdef DEBUG
+						printf("find_quick_match: iter %3d, calc_trans fails", iter);
+#endif
+						failure_flag = 1;
+						break;
+					}
+#ifdef DEBUG2
+					printf("  find_quick_match: calc_trans succeeds \n");
+					print_trans(test_trans);
+#endif
+		
+					/* 
+					 * Does this TRANS satisfy the constraints on scale
+					 * and rotation angle which the user specified?
+					 * If no, we discard this TRANS and start all over.
+					 */
+					if (check_trans_properties(test_trans,
+							min_scale, max_scale, 
+							rotation_deg, tolerance_deg) != SH_SUCCESS) {
 	#ifdef DEBUG2
-					printf("apply_trans_and_find_matches fails \n");
+						printf("check_trans_properties fails, so give up on this TRANS \n");
 	#endif
+						failure_flag = 1;
+						break;
+					}
+	
+	
+					/* 
+					 * Is this really a good TRANS?  To find out, we apply
+					 * it to all the stars in list A, then check to see how
+					 * many match with stars in list B.  
+					 *
+					 * After running "apply_trans_and_find_matches()",
+					 *    a) the number of matching pairs will be set
+					 *          in the "num_winners" variable
+					 *    b) the indices of matching pairs
+					 *          from each list will be set in
+					 *          the "winner_index_A[]" and
+					 *          "winner_index_B[[]" arrays
+					 */
+		
+		#ifdef DEBUG2
+					printf("  before apply_trans_and_find_matches, num_stars_B %5d \n",
+								num_stars_B);
+		#endif
+					if (apply_trans_and_find_matches(
+							star_array_A, num_stars_A,
+							star_array_B, num_stars_B,
+							star_coord_array_B,
+							star_match_radius,
+							test_trans,
+							&num_winners,
+							&(winner_index_A[0]), &(winner_index_B[0])) != SH_SUCCESS) {
+		#ifdef DEBUG2
+						printf("apply_trans_and_find_matches fails \n");
+		#endif
+					}
+					else {
+		#ifdef DEBUG2
+						printf("apply_trans_and_find_matches succeeds \n");
+						printf("   num_winners = %5d \n", num_winners);
+		#endif
+		
+					}
+		#ifdef DEBUG2
+					printf("  after  apply_trans_and_find_matches, num_stars_B %5d \n",
+								num_stars_B);
+		#endif
+				
+					nbright = num_winners;
+				
+	
+					/* evaluate the quality of the matches given by this TRANS */
+					if (eval_trans_quality(
+							star_array_A, num_stars_A,
+							star_array_B, num_stars_B,
+							star_match_radius,
+							test_trans) != SH_SUCCESS) {
+						printf("eval_trans_quality fails ?!\n");
+						return(SH_GENERIC_ERROR);
+					}
+	#ifdef DEBUG
+					printf(" after iter %2d, here comes TRANS \n", iter);
+					print_trans(test_trans);
+	#endif
+	
+					/* 
+					 * at this point, we could could eliminate
+					 * some of the matching pairs
+					 */
+	
+					/* 
+					 * we used a linear TRANS for the initial comparison of stars,
+					 * but if the user requested a higher-order TRANS, we now
+					 * switch to using that higher-order for all subsequent 
+					 * iterations.
+					 */
+					if (output_trans->order != AT_TRANS_LINEAR) {
+	#ifdef DEBUG2
+						printf("   iter %d: switching from order 1 to order %d  \n",
+									iter, output_trans->order);
+	#endif
+						test_trans->order = output_trans->order;
+					}
+	
+					
+				} /* end of loop over iterations of calc_trans/apply_trans */
+	
+				
+	
+				}
+	
+				if (failure_flag == 1) {
+					continue;
+				}
+	
+	
+				/* we should check here to see if "num_winners" is high enough ... */
+	
+				nbright = num_winners;
+	
+	
+				/* 
+				 * At this point, we have created the best TRANS we can, starting
+				 * with the current pair of triangles.  The question is "is the
+			 	 * TRANS good enough for us to declare success and return?"
+				 *
+				 *    If the answer is yes, we break out of loop, return 
+				 *    If no, we keep walking through the list of triangles, 
+				 *           looking for another pair of matching triangles
+				 *           to serve as a starting point.
+				 */
+				if (is_trans_good_enough(min_req_pairs, max_sigma, test_trans) 
+							== SH_SUCCESS) {
+	#ifdef DEBUG2
+					printf(" is_trans_good_enough returns yes \n");
+	#endif
+	
+					/* make sure the TRANS has proper scale and rotation */
+					if (check_trans_properties(test_trans,
+							min_scale, max_scale, 
+							rotation_deg, tolerance_deg) == SH_SUCCESS) {
+	
+						/* yes!  It's good enough! */
+	
+						/* assign the properties of the test_trans to output_trans */
+						copyTrans(test_trans, output_trans);
+	
+						/* and return immediately -- no need to look for better matches */
+						return(SH_SUCCESS);
+	
+					}
+					else {
+	#ifdef DEBUG2
+						printf(" but check_trans_properties fails, so give up on this TRANS \n");
+	#endif
+					}
 				}
 				else {
 	#ifdef DEBUG2
-					printf("apply_trans_and_find_matches succeeds \n");
-					printf("   num_winners = %5d \n", num_winners);
+					printf(" is_trans_good_enough returns no \n");
 	#endif
+				}
 	
-				}
-	#ifdef DEBUG2
-				printf("  after  apply_trans_and_find_matches, num_stars_B %5d \n",
-							num_stars_B);
-	#endif
 			
-				nbright = num_winners;
-			
-
-				/* evaluate the quality of the matches given by this TRANS */
-				if (eval_trans_quality(
-						star_array_A, num_stars_A,
-						star_array_B, num_stars_B,
-						star_match_radius,
-						test_trans) != SH_SUCCESS) {
-					printf("eval_trans_quality fails ?!\n");
-					return(SH_GENERIC_ERROR);
-				}
-#ifdef DEBUG
-				printf(" after iter %2d, here comes TRANS \n", iter);
-				print_trans(test_trans);
-#endif
-
-				/* 
-				 * at this point, we could could eliminate
-				 * some of the matching pairs
-				 */
-
-				/* 
-				 * we used a linear TRANS for the initial comparison of stars,
-				 * but if the user requested a higher-order TRANS, we now
-				 * switch to using that higher-order for all subsequent 
-				 * iterations.
-				 */
-				if (output_trans->order != AT_TRANS_LINEAR) {
-#ifdef DEBUG2
-					printf("   iter %d: switching from order 1 to order %d  \n",
-								iter, output_trans->order);
-#endif
-					test_trans->order = output_trans->order;
-				}
-
-				
-			}
-
-			
-
 			}
 
 
 
-			/* we should check here to see if "num_winners" is high enough ... */
+		} /* end of loop over all triangles in B list */
 
-			nbright = num_winners;
-
-
-			/* 
-			 * At this point, we have created the best TRANS we can, starting
-			 * with the current pair of triangles.  The question is "is the
-		 	 * TRANS good enough for us to declare success and return?"
-			 *
-			 *    If the answer is yes, we break out of loop, return 
-			 *    If no, we keep walking through the list of triangles, 
-			 *           looking for another pair of matching triangles
-			 *           to serve as a starting point.
-			 */
-
-			if (is_trans_good_enough(min_req_pairs, max_sigma, test_trans) 
-						== SH_SUCCESS) {
-#ifdef DEBUG2
-				printf(" is_trans_good_enough returns yes \n");
-#endif
-	
-				/* assign the properties of the test_trans to output_trans */
-				copyTrans(test_trans, output_trans);
-
-				/* and return immediately -- no need to look for better matches */
-				return(SH_SUCCESS);
-
-			}
-			else {
-#ifdef DEBUG2
-				printf(" is_trans_good_enough returns no \n");
-#endif
-			}
-
-		
-		}
-
-	}
-
+	} /* end of loop over all triangles in A list */
 
 
 	/* if we reach this point, we did NOT find a good match */
@@ -8324,8 +8344,14 @@ prune_matched_pairs
 #endif
 
 			for (j = i; j < current_num_matches - 1; j++) {
-				star_array_A[j] = star_array_A[j + 1];
-				star_array_B[j] = star_array_B[j + 1];
+#ifdef DEBUG2
+				printf("   shift match_index_A[%3d] from %5d to %5d \n", 
+						j, match_index_A[j], match_index_A[j + 1]);
+				printf("   shift match_index_B[%3d] from %5d to %5d \n", 
+						j, match_index_B[j], match_index_B[j + 1]);
+#endif
+				match_index_A[j] = match_index_A[j + 1];
+				match_index_B[j] = match_index_B[j + 1];
 			}
 			current_num_matches--;
 			i--;
@@ -8413,7 +8439,7 @@ eval_trans_quality
 	                           /*       of the matched pairs on output */
    )
 {
-	int i, num_matched;
+	int i, num_matched, num_possible_matches;
 	int *matched_index_A, *matched_index_B;
 	struct s_star *transformed_star_array_A;
 	struct s_star_coord *star_coord_array_B;
@@ -8442,15 +8468,26 @@ eval_trans_quality
 	 * step 0: allocate space for arrays which will hold indices 
 	 *         of the elements of each match we find
 	 */
-	matched_index_A = shMalloc(num_stars_A*sizeof(int));
-	matched_index_B = shMalloc(num_stars_B*sizeof(int));
+	num_possible_matches = (num_stars_A > num_stars_B ? 
+				num_stars_A : num_stars_B);
+	matched_index_A = shMalloc(num_possible_matches*sizeof(int));
+	matched_index_B = shMalloc(num_possible_matches*sizeof(int));
 	
 	/* 
 	 * step 1: create a copy of star list A, which we then transform
 	 *         into the coords of list B using the given TRANS 
 	 */
+#if 0
+printf(" A: trans order is %d \n", trans->order);
+#endif
 	transformed_star_array_A = shMalloc(sizeof(struct s_star)*num_stars_A);
+#if 0
+printf(" B: trans order is %d \n", trans->order);
+#endif
 	copy_star_array(star_array_A, transformed_star_array_A, num_stars_A);
+#if 0
+printf(" C: trans order is %d \n", trans->order);
+#endif
 	if (apply_trans(transformed_star_array_A, num_stars_A, trans) != SH_SUCCESS) {
 		shError("eval_trans_quality: apply_trans fails \n");
 		return(SH_GENERIC_ERROR);
@@ -8581,6 +8618,7 @@ eval_trans_quality
 
 #ifdef DEBUG2
 		printf(" at bottom of loop in eval_trans_quality, i = %5d \n", i);
+		printf(" num_stars_B is %d  num_matched is %d \n", num_stars_B, num_matched);
 		fflush(NULL);
 #endif
 
@@ -8818,5 +8856,109 @@ is_trans_good_enough
 	}
 
 	return(SH_GENERIC_ERROR);
+}
+
+
+
+/************************************************************************
+ * ROUTINE: check_trans_properties
+ *
+ * DESCRIPTION:
+ * Given a TRANS, and some parameters provided by the user,
+ * verify that that the scale factor (=magnification) 
+ * and rotation of the TRANS match the user's desired values.
+ *
+ * RETURN:
+ *    SH_SUCCESS                 if values match user's
+ *    SH_GENERIC_ERROR           otherwise
+ *
+ * </AUTO>
+ */
+
+
+static int
+check_trans_properties
+   (
+	TRANS *trans,           /* I: check properties of this TRANS */
+	double min_scale,       /* I: scale must be at least this big ... */
+	double max_scale,       /* I: ... and less than this value */
+	double rotation_deg,    /* I: rotation angle must be close to this .. */
+	double tolerance_deg    /* I: ... within this many degrees */
+   )
+{
+	int scale_ok = -1;
+	int rot_ok = -1;
+	double scale;
+
+#ifdef DEBUG2
+   printf("entering check_trans_properties \n");
+#endif
+
+	shAssert(trans != NULL);
+
+	/* 
+	 * Figure out the scale factor (=magnification) of the TRANS 
+	 */
+	scale = sqrt(trans->b*trans->b + trans->c*trans->c);
+
+	/* 
+	 * If the "min_scale" and "max_scale" values are both -1, 
+	 * then the user did not specify any constraints.
+	 */
+	if ((min_scale == -1) && (max_scale == -1)) {
+		/* any value is okay */
+		scale_ok = 1;
+	}
+	else {
+		if ((scale < min_scale) || (scale > max_scale)) {
+#ifdef DEBUG2
+			printf(" check_trans_properties: scale %.2f not within %.2f - %.2f \n",
+					scale, min_scale, max_scale);
+#endif
+		}
+		else {
+			scale_ok = 1;
+		}
+	}
+
+
+	/* 
+	 * figure out the rotation angle, in degrees.  Force it into
+	 * the range -180 to +180.
+	 */
+	if ((rotation_deg == AT_MATCH_NOANGLE) &&
+	    (tolerance_deg == AT_MATCH_NOANGLE)) {
+		rot_ok = 1;
+	}
+	else {
+		double min_angle_deg, max_angle_deg;
+		double trans_angle_rad, trans_angle_deg;
+
+   	min_angle_deg = rotation_deg - tolerance_deg;
+   	max_angle_deg = rotation_deg + tolerance_deg;
+
+		trans_angle_rad = atan2(trans->c, trans->b);
+		trans_angle_deg = trans_angle_rad*(180.0/3.14159);
+
+	   if ((trans_angle_deg >= min_angle_deg) && (trans_angle_deg <= max_angle_deg)) {
+			/* okay */
+			rot_ok = 1;
+		}
+		else {
+#ifdef DEBUG2
+	      printf(" check_trans_properties: TRANS %.1lf deg not in range %.1f - %.1f \n",
+					trans_angle_deg, min_angle_deg, max_angle_deg);
+#endif
+			rot_ok = -1;
+		}
+   }
+
+
+	if ((scale_ok == 1) && (rot_ok == 1)) {
+		return(SH_SUCCESS);
+	}
+	else {
+		return(SH_GENERIC_ERROR);
+	}
 }
 

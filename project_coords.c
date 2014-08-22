@@ -100,7 +100,6 @@ main
    double ra, dec;
    char outfile[100];
    FILE *fp;
-   TRANS trans;
 
    /* make special search for --version, --help, and help */
    if ((argc < 2) ||

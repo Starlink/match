@@ -1,3 +1,12 @@
+08/17/2012  Big changes: replaced the algorithm of Valdes (PASP 107, 1119, 1995)
+               with that of Tabur (PASJ 24, 189, 2007).  New method is more
+               robust, can be quicker for large numbers of objects.
+               There's one new input argument (min_req_pairs), and the
+               default value of another argument (halt_sigma) has
+               been changed.
+            Modified values in selftest.pl slightly, even though using
+               the same tests.
+
 12/05/2011  New arguments to allow user to specify rotation
                The "rotangle=" and "rottol=" arguments allow user
                    to specify an allowed range of rotation angles

@@ -1,3 +1,11 @@
+version 0.15  08/17/2012
+
+    Big change, removing the brute-force method of Valdes et al. 
+    (PASP 107, 1119, 1995) for the more clever and robust technique
+    of Tabur (PASJ 24, 189, 2007).  Tried to keep input/output/arguments
+    the same, with very minor exceptions to input args.
+
+	
 version 0.14  11/04/2011
 
     Added "rotangle=" and "rottol=" arguments, so that the user can 

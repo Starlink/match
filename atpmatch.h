@@ -118,17 +118,22 @@
 
    /*
     * When we are evaluating the current TRANS, we calculate the
-    * residuals for matching pairs of stars.  If the "sigma"
-    * (effective median residual) is smaller than this value,
+    * residuals for matching pairs of stars.  If the variance
+	 * in the offset between matched stars (in other words,
+    * the square of the typical residual) is smaller than this value,
     * we stop iterating and declare success.  
     *
-    * This value is (typically) in radians-squared.  So a residual
-    * of one arcsecond corresponds to sigma = 2.35E-11.
+    * This value is (typically) in pixels-squared.  So a default 
+    * value of one pixel-squared is a reasonable default.
+    *  
+    * If one has a coordinate system in units of radians,
+	 * then a standard deviation of one arcsecond
+    * corresponds to variance = 2.35E-11 radians.
     *  
     * The user can modify this value via the "halt_sigma"
     * command-line argument.
     */
-#define AT_MATCH_HALTSIGMA    1.0e-12
+#define AT_MATCH_HALTSIGMA    1.0
 
 
    /*
@@ -155,6 +160,38 @@
     * to denote that any rotation is permitted.
     */
 #define AT_MATCH_NOANGLE      -999.0
+
+
+   /*
+    * When using the "quick" algorithm to compare triangles
+    *    in two lists, we compare the "yt" members of the
+    *    triangles.  How close (in percentage terms) do 
+    *    the two "yt" values have to be to count as a match?
+    */
+#define AT_QUICK_YT_PERCENT    2.0
+
+   /*
+    * When using the "quick" algorithm to compare triangles
+    *    in two lists, the ratios of all 3 side lengths in the
+    *    two triangles must differ by less than this amount
+    *    for the two triangles to be considered a match
+    */
+#define AT_QUICK_RATIO_DIFF    0.02
+
+	/*
+	 * Require at least this many matched pairs of stars
+	 *    after a TRANS has been found and applied
+	 *    to count as a success.  
+	 * 
+	 * Of course, this cannot be smaller than the minimum number
+	 *    of matched pairs required to define a TRANS of
+	 *    the desired order.  In other words, if the user
+	 *    specifies a cubic transformation (which needs 10 pairs
+	 *    to define it), he must be sure to specify that the 
+	 *    minimum number of pairs is at least 10.
+	 */
+#define AT_MATCH_MINPAIRS    10
+
 
    /* 
     * this holds information on a single star (or object) 
@@ -187,11 +224,15 @@ typedef struct s_triangle {
    double a_length;         /* length of side a (not normalized) */
    double ba;               /* ratio of lengths b/a   ... must be 0.0-1.0 */
    double ca;               /* ratio of lengths c/a   ... must be 0.0-1.0 */
+   double cb;               /* ratio of lengths c/b   ... must be 0.0-1.0 */
    int a_index;             /* index of the star opposite side a */
    int b_index;             /* index of the star opposite side b */
    int c_index;             /* index of the star opposite side c */
    int match_id;            /* ID of triangle in other list which matches */
    double side_a_angle;     /* angle from one star to other in longest side */
+	double xt;               /* dot product of two longest sides */
+	double yt;               /* ratio of longest to shortest side = 1 / ca */
+	double D;                /* product of xt and yt */
    struct s_triangle *next; /* we use linked lists internally */
 } s_triangle;               
    
@@ -201,9 +242,11 @@ typedef struct s_triangle {
     */
 
 int atFindTrans(int numA, s_star *listA, int numB, s_star *listB, 
+                double star_match_radius,
                 double radius, int nbright, double min_scale, double max_scale, 
                 double rotation_deg, double tolerance_deg,
-                int max_iter, double halt_sigma, TRANS *trans);
+                int max_iter, double max_sigma, int min_req_pairs,
+                TRANS *trans);
 
 int atApplyTrans(int num, s_star *list, TRANS *trans);
 

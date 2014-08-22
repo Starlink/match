@@ -150,6 +150,7 @@ TRANS *getGuessTrans(char *intransfile);
 TRANS *getIdentityTrans(void);
 void atTransDel(TRANS *trans);
 void print_trans(TRANS *trans);
+void copyTrans(TRANS *from, TRANS *to);
 
 	/*
 	 * The MEDTF structure holds statistics on the difference between

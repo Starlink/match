@@ -59,6 +59,11 @@
 #   Add test of the "project_coords" program.
 # MWR 10/25/2003
 #
+#   Modified the expected values in "check_linear", necessary due to 
+#   changes in the algorithm used for matching.
+#   Also some changes to other "check_" subroutines.
+# MWR 8/17/2012
+#
 
 # set this to 1 to enable lots of debugging messages
 $debug = 0;
@@ -145,6 +150,7 @@ if ($debug > 0) {
 }
 $final_code += check_quadratic($retval);
 
+
 $retval = `./match $input_a 1 2 3 $input_b 1 2 3 trirad=0.002 nobj=20 quadratic recalc`;
 if ($debug > 0) {
   printf "running quadratic test, recalc  Result is:\n";
@@ -179,6 +185,7 @@ if ($debug > 0) {
 $final_code += check_id("matched.mtA", "matched.mtB");
 
 
+
 # Check the 'medtf' option
 $retval = `./match $input_a 1 2 3 $input_c 1 2 3 trirad=0.002 nobj=20 linear medtf 2>&1 `;
 if ($debug > 0) {
@@ -186,6 +193,7 @@ if ($debug > 0) {
   printf "$retval";
 }
 $final_code += check_medtf($retval);
+
 
 # Check the 'medsigclip' option
 $retval = `./match $input_a 1 2 3 $input_c 1 2 3 trirad=0.002 nobj=20 linear medsigclip=2.5 2>&1 `;
@@ -322,12 +330,14 @@ $final_code += check_failed($retval, "invalid coefficient spec",
 #
 
 
+
+
 #
 # Now check that the 'identity' keyword causes us to get the right
 #   answer (or wrong answer, if misused)
 #
 #   this test should fail
-$retval = `./match $input_d 1 2 3 $input_e 1 2 3 trirad=0.002 nobj=70 identity`;
+$retval = `./match $input_d 1 2 3 $input_e 1 2 3 trirad=0.002 nobj=70 identity halt_sigma=1.0e-10`;
 if ($debug > 0) {
   printf "running identity test A.  \n";
   printf "$retval\n";
@@ -336,7 +346,7 @@ $retcode = check_identity($retval);
 $final_code += ($retcode == 0);
 #
 #   but this test should succeed
-$retval = `./match $input_d 1 2 3 $input_e 1 2 3 trirad=0.002 nobj=70 identity xsh=30 ysh=-50`;
+$retval = `./match $input_d 1 2 3 $input_e 1 2 3 trirad=0.002 nobj=70 identity xsh=30 ysh=-50 halt_sigma=1.0e-10`;
 if ($debug > 0) {
   printf "running identity test B.  \n";
   printf "$retval\n";
@@ -346,12 +356,13 @@ $final_code += ($retcode != 0);
 #
 
 
+
 #
 # Now check that the 'intrans' keyword causes us to get the right
 #   answer (or wrong answer, if misused)
 #
 #   this test should succeed
-$retval = `./match $input_d 1 2 3 $input_e 1 2 3 trirad=0.002 nobj=70 intrans=$intrans_a`;
+$retval = `./match $input_d 1 2 3 $input_e 1 2 3 trirad=0.002 nobj=70 intrans=$intrans_a halt_sigma=1.0e-10`;
 if ($debug > 0) {
   printf "running intrans test A.  \n";
   printf "$retval\n";
@@ -360,7 +371,7 @@ $retcode = check_identity($retval);
 $final_code += ($retcode != 0);
 #
 #   but this test should fails
-$retval = `./match $input_d 1 2 3 $input_e 1 2 3 trirad=0.002 nobj=70 intrans=$intrans_b`;
+$retval = `./match $input_d 1 2 3 $input_e 1 2 3 trirad=0.002 nobj=70 intrans=$intrans_b halt_sigma=1.0e-10`;
 if ($debug > 0) {
   printf "running intrans test B.  \n";
   printf "$retval\n";
@@ -369,7 +380,7 @@ $retcode = check_identity($retval);
 $final_code += ($retcode == 0);
 #
 #   this test of quadratic model should succeed
-$retval = `./match $input_d 1 2 3 $input_e 1 2 3 trirad=0.002 nobj=70 intrans=$intrans_e`;
+$retval = `./match $input_d 1 2 3 $input_e 1 2 3 trirad=0.002 nobj=70 intrans=$intrans_e halt_sigma=1.0e-10`;
 if ($debug > 0) {
   printf "running intrans test C.  \n";
   printf "$retval\n";
@@ -378,7 +389,7 @@ $retcode = check_identity_quadratic($retval);
 $final_code += ($retcode != 0);
 #
 #   this test of cubic model should succeed
-$retval = `./match $input_d 1 2 3 $input_e 1 2 3 trirad=0.002 nobj=70 intrans=$intrans_f`;
+$retval = `./match $input_d 1 2 3 $input_e 1 2 3 trirad=0.002 nobj=70 intrans=$intrans_f halt_sigma=1.0e-10`;
 if ($debug > 0) {
   printf "running intrans test D.  \n";
   printf "$retval\n";
@@ -452,11 +463,11 @@ sub check_linear {
   $ret_code += check_value($words[1], 0.0,   0.10, "coeff a");
   $ret_code += check_value($words[2], 0.707, 0.02, "coeff b");
   $ret_code += check_value($words[3],-0.707, 0.02, "coeff c");
-  $ret_code += check_value($words[4], 0.0,   0.10, "coeff d");
+  $ret_code += check_value($words[4], 0.08,  0.10, "coeff d");
   $ret_code += check_value($words[5], 0.707, 0.02, "coeff e");
   $ret_code += check_value($words[6], 0.707, 0.02, "coeff f");
-  $ret_code += check_value($words[7], 0.01,  0.01, "coeff sig");
-  $ret_code += check_value($words[8], 15,    5   , "coeff Nr");
+  $ret_code += check_value($words[7], 0.05,  0.07, "coeff sig");
+  $ret_code += check_value($words[9], 20,    5   , "coeff Nm");
   $ret_code += check_value($words[10], 0.0,  0.5 , "coeff sx");
   $ret_code += check_value($words[11], 0.0,  0.5 , "coeff sy");
 
@@ -512,8 +523,8 @@ sub check_quadratic {
   $ret_code += check_value($words[10], 0.00005, 0.00010, "coeff j");
   $ret_code += check_value($words[11],-0.00005, 0.00010, "coeff k");
   $ret_code += check_value($words[12], 0.00005, 0.00010, "coeff l");
-  $ret_code += check_value($words[13], 0.01,  0.01, "coeff sig");
-  $ret_code += check_value($words[14], 15,    5   , "coeff Nr");
+  $ret_code += check_value($words[13], 0.01,  0.03, "coeff sig");
+  $ret_code += check_value($words[15], 15,    5   , "coeff Nm");
   $ret_code += check_value($words[16], 0.0,   0.1 , "coeff sx");
   $ret_code += check_value($words[17], 0.0,   0.1 , "coeff sy");
 
@@ -573,8 +584,8 @@ sub check_cubic {
   $ret_code += check_value($words[14], 0.00005, 0.00010, "coeff n");
   $ret_code += check_value($words[15], 0.0000001, 0.00001, "coeff o");
   $ret_code += check_value($words[16], 0.0000001, 0.00001, "coeff p");
-  $ret_code += check_value($words[17], 0.01,  0.01, "coeff sig");
-  $ret_code += check_value($words[18], 15,    5   , "coeff Nr");
+  $ret_code += check_value($words[17], 0.01,  0.03, "coeff sig");
+  $ret_code += check_value($words[19], 15,    5   , "coeff Nm");
   $ret_code += check_value($words[20], 0.0,   0.1 , "coeff sx");
   $ret_code += check_value($words[21], 0.0,   0.1 , "coeff sy");
 
